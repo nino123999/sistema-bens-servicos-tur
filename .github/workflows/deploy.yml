@@ -28,12 +28,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: src/SistemaBensServicosTur.Web/Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_NAME }}:prod
+        run: |
+          docker build \
+            --file src/SistemaBensServicosTur.Web/Dockerfile \
+            --tag ${{ env.IMAGE_NAME }}:prod \
+            --progress=plain \
+            .
+          docker push ${{ env.IMAGE_NAME }}:prod
 
   deploy:
     runs-on: ubuntu-latest
