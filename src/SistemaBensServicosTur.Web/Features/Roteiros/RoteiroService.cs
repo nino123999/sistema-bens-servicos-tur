@@ -60,7 +60,11 @@ public class RoteiroService(IDbContextFactory<CadastroInvturDbContext> factory)
             db.Roteiros.Add(roteiro);
         }
 
-        roteiro.Nome = model.Nome?.Trim() ?? "";
+        roteiro.Nome = model.Titulo?.Trim() ?? model.Nome?.Trim() ?? "";
+        roteiro.Titulo = model.Titulo?.Trim() ?? "";
+        roteiro.Descricao = model.Descricao?.Trim();
+        roteiro.Inicio = model.Inicio;
+        roteiro.Fim = model.Fim;
 
         for (var i = 0; i < model.EmpresaIds.Count; i++)
         {

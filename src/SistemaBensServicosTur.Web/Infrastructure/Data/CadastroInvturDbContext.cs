@@ -25,6 +25,10 @@ public class CadastroInvturDbContext(DbContextOptions<CadastroInvturDbContext> o
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
                     v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>());
+            entity.HasOne(e => e.CidadeTenant)
+                .WithMany()
+                .HasForeignKey(e => e.CidadeTenantId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Cidade>(entity =>
