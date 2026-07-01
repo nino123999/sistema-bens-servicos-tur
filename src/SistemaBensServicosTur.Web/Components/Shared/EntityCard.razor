@@ -1,0 +1,42 @@
+@if (!string.IsNullOrWhiteSpace(FotoUrl) || !string.IsNullOrWhiteSpace(FotoSecretariaUrl))
+{
+    <div class="flex items-center gap-4 rounded-[var(--radius-xl)] border-soft bg-white p-4 shadow-sm">
+        @if (!string.IsNullOrWhiteSpace(FotoUrl))
+        {
+            <img src="@FotoUrl" alt="@Name" class="h-16 w-16 rounded-xl object-cover" />
+        }
+        else
+        {
+            <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary text-2xl font-bold text-on-dark">
+                @(Name.Length > 0 ? Name[0].ToString().ToUpperInvariant() : "?")
+            </div>
+        }
+        <div class="min-w-0 flex-1">
+            <h2 class="truncate text-lg font-bold text-primary">@Name</h2>
+            <p class="text-sm font-semibold text-muted">@Location</p>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(FotoSecretariaUrl))
+        {
+            <img src="@FotoSecretariaUrl" alt="Secretaria" class="ml-auto h-12 w-auto object-contain" />
+        }
+    </div>
+}
+else if (!string.IsNullOrWhiteSpace(Name))
+{
+    <div class="flex items-center gap-4 rounded-[var(--radius-xl)] border-soft bg-white p-4 shadow-sm">
+        <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary text-2xl font-bold text-on-dark">
+            @Name[0].ToString().ToUpperInvariant()
+        </div>
+        <div class="min-w-0 flex-1">
+            <h2 class="truncate text-lg font-bold text-primary">@Name</h2>
+            <p class="text-sm font-semibold text-muted">@Location</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public string Location { get; set; } = "";
+    [Parameter] public string? FotoUrl { get; set; }
+    [Parameter] public string? FotoSecretariaUrl { get; set; }
+}

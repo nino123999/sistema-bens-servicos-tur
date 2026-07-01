@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using SistemaBensServicosTur.Web.Components.Shared;
+using SistemaBensServicosTur.Web.Features.Users;
 
 namespace SistemaBensServicosTur.Web.Components.Layout;
 

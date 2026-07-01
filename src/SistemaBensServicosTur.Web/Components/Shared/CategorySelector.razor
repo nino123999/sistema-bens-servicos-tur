@@ -1,0 +1,119 @@
+@using Microsoft.EntityFrameworkCore
+@using SistemaBensServicosTur.Web.Entities
+@using SistemaBensServicosTur.Web.Infrastructure.Data
+@inject IDbContextFactory<CadastroInvturDbContext> DbContextFactory
+
+<div class="space-y-3">
+    <div class="space-y-2">
+        <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Categoria</label>
+        <select class="form-control" value="@CategoriaId" @onchange="OnCategoriaChangeAsync">
+            <option value="">@Placeholder</option>
+            @foreach (var cat in _categorias)
+            {
+                <option value="@cat.Id">@cat.Nome</option>
+            }
+        </select>
+    </div>
+
+    @if (_tipos.Count > 0)
+    {
+        <div class="space-y-2">
+            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Tipo</label>
+            <select class="form-control" value="@TipoId" @onchange="OnTipoChangeAsync">
+                <option value="">Selecione o tipo</option>
+                @foreach (var tipo in _tipos)
+                {
+                    <option value="@tipo.Id">@tipo.Nome</option>
+                }
+            </select>
+        </div>
+    }
+
+    @if (_subtipos.Count > 0)
+    {
+        <div class="space-y-2">
+            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Subtipo</label>
+            <select class="form-control" value="@SubtipoId" @onchange="OnSubtipoChangeAsync">
+                <option value="">Selecione o subtipo</option>
+                @foreach (var sub in _subtipos)
+                {
+                    <option value="@sub.Id">@sub.Nome</option>
+                }
+            </select>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid? CategoriaId { get; set; }
+    [Parameter] public EventCallback<Guid?> CategoriaIdChanged { get; set; }
+    [Parameter] public Guid? TipoId { get; set; }
+    [Parameter] public EventCallback<Guid?> TipoIdChanged { get; set; }
+    [Parameter] public Guid? SubtipoId { get; set; }
+    [Parameter] public EventCallback<Guid?> SubtipoIdChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Selecione a categoria";
+
+    private List<Categoria> _categorias = new();
+    private List<Tipo> _tipos = new();
+    private List<Subtipo> _subtipos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbContextFactory.CreateDbContextAsync();
+        _categorias = await db.Categorias.AsNoTracking().OrderBy(c => c.Nome).ToListAsync();
+
+        if (CategoriaId.HasValue)
+            _tipos = await db.Tipos.AsNoTracking().Where(t => t.CategoriaId == CategoriaId.Value).OrderBy(t => t.Nome).ToListAsync();
+
+        if (TipoId.HasValue)
+            _subtipos = await db.Subtipos.AsNoTracking().Where(s => s.TipoId == TipoId.Value).OrderBy(s => s.Nome).ToListAsync();
+    }
+
+    private async Task OnCategoriaChangeAsync(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        {
+            await CategoriaIdChanged.InvokeAsync(id);
+            await TipoIdChanged.InvokeAsync(null);
+            await SubtipoIdChanged.InvokeAsync(null);
+
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+            _tipos = await db.Tipos.AsNoTracking().Where(t => t.CategoriaId == id).OrderBy(t => t.Nome).ToListAsync();
+            _subtipos = new();
+        }
+        else
+        {
+            await CategoriaIdChanged.InvokeAsync(null);
+            await TipoIdChanged.InvokeAsync(null);
+            await SubtipoIdChanged.InvokeAsync(null);
+            _tipos = new();
+            _subtipos = new();
+        }
+    }
+
+    private async Task OnTipoChangeAsync(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        {
+            await TipoIdChanged.InvokeAsync(id);
+            await SubtipoIdChanged.InvokeAsync(null);
+
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+            _subtipos = await db.Subtipos.AsNoTracking().Where(s => s.TipoId == id).OrderBy(s => s.Nome).ToListAsync();
+        }
+        else
+        {
+            await TipoIdChanged.InvokeAsync(null);
+            await SubtipoIdChanged.InvokeAsync(null);
+            _subtipos = new();
+        }
+    }
+
+    private async Task OnSubtipoChangeAsync(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+            await SubtipoIdChanged.InvokeAsync(id);
+        else
+            await SubtipoIdChanged.InvokeAsync(null);
+    }
+}
