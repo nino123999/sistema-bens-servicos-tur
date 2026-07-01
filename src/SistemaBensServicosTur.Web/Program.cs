@@ -126,7 +126,7 @@ using (var scope = app.Services.CreateScope())
 {
     var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<CadastroInvturDbContext>>();
     await using var db = factory.CreateDbContext();
-    await db.Database.MigrateAsync();
+    await db.Database.EnsureCreatedAsync();
 
     var adminSetupPass = app.Configuration["ADMIN_SETUP_PASS"];
     if (!string.IsNullOrEmpty(adminSetupPass) && !await db.Usuarios.AnyAsync())
