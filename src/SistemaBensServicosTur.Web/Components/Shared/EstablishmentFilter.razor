@@ -1,0 +1,42 @@
+<div class="flex flex-wrap items-center gap-3 rounded-[var(--radius-xl)] border-soft bg-white p-4 shadow-sm">
+    <div class="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border-soft bg-surface px-3 py-2">
+        <svg class="h-4 w-4 shrink-0 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4-4" stroke-linecap="round" />
+        </svg>
+        <input type="text"
+               class="w-full border-0 bg-transparent text-sm font-semibold text-main outline-none placeholder:text-muted"
+               placeholder="Buscar por nome..."
+               value="@SearchText"
+               @oninput="OnSearchInput" />
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(SearchText) || CategoriaId.HasValue || TipoId.HasValue || SubtipoId.HasValue)
+    {
+        <button type="button"
+                class="rounded-xl border-soft bg-white px-3 py-2 text-sm font-semibold text-secondary transition-all hover:bg-surface hover:text-primary"
+                @onclick="OnClear">
+            Limpar filtros
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public string SearchText { get; set; } = "";
+    [Parameter] public EventCallback<string> SearchTextChanged { get; set; }
+    [Parameter] public Guid? CategoriaId { get; set; }
+    [Parameter] public EventCallback<Guid?> CategoriaIdChanged { get; set; }
+    [Parameter] public Guid? TipoId { get; set; }
+    [Parameter] public EventCallback<Guid?> TipoIdChanged { get; set; }
+    [Parameter] public Guid? SubtipoId { get; set; }
+    [Parameter] public EventCallback<Guid?> SubtipoIdChanged { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+    [Parameter] public EventCallback OnFilterRequested { get; set; }
+    [Parameter] public EventCallback OnCategoryChanged { get; set; }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "";
+        await SearchTextChanged.InvokeAsync(value);
+    }
+}
