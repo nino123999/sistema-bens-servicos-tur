@@ -119,6 +119,7 @@ app.MapPost("/auth/logout", async (HttpContext ctx) =>
     ctx.Response.Redirect("/login");
 });
 
+app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
