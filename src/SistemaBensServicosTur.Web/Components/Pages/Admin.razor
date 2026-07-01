@@ -1,0 +1,191 @@
+@page "/admin"
+@attribute [Authorize(Roles = AuthConstants.Roles.Admin)]
+@using SistemaBensServicosTur.Web.Features.Admin
+@using SistemaBensServicosTur.Web.Infrastructure.Security
+@inject AdminService AdminService
+
+<PageTitle>Administração</PageTitle>
+
+<div class="space-y-6">
+    <header class="flex flex-col gap-4 rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-primary">Administração</h1>
+            <p class="mt-1 text-sm font-semibold text-muted">Gerencie cidades, usuários e permissões de acesso.</p>
+        </div>
+
+        <div class="flex gap-2">
+            <a href="/" class="rounded-xl border-soft bg-white px-4 py-2 text-sm font-semibold text-secondary no-underline transition-all hover:bg-surface hover:text-primary">Voltar</a>
+            <form method="post" action="/auth/logout" class="m-0">
+                <button type="submit" class="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-on-dark transition-all hover:bg-[#3A6391]">Sair</button>
+            </form>
+        </div>
+    </header>
+
+    @if (_loading)
+    {
+        <section class="rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-sm">
+            <p class="text-sm font-semibold text-muted">Carregando dados...</p>
+        </section>
+    }
+    else
+    {
+        <div class="grid gap-6 xl:grid-cols-2">
+            <section class="rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-primary">Nova cidade</h2>
+                <p class="mt-1 text-sm font-semibold text-muted">Cadastre o tenant e as imagens exibidas no painel.</p>
+
+                @if (!string.IsNullOrWhiteSpace(_cidadeFeedback))
+                {
+                    <div class="@GetAlertClass(_cidadeFeedbackError)">
+                        @_cidadeFeedback
+                    </div>
+                }
+
+                <EditForm Model="_cidadeModel" OnValidSubmit="SalvarCidadeAsync" class="mt-5 space-y-4">
+                    <DataAnnotationsValidator />
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Nome da cidade</label>
+                        <InputText class="form-control" @bind-Value="_cidadeModel.Nome" />
+                        <ValidationMessage For="@(() => _cidadeModel.Nome)" />
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Foto da cidade (URL)</label>
+                        <InputText class="form-control" @bind-Value="_cidadeModel.FotoUrl" />
+                        <ValidationMessage For="@(() => _cidadeModel.FotoUrl)" />
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Foto da secretaria (URL)</label>
+                        <InputText class="form-control" @bind-Value="_cidadeModel.FotoSecretariaUrl" />
+                        <ValidationMessage For="@(() => _cidadeModel.FotoSecretariaUrl)" />
+                    </div>
+
+                    <button type="submit" class="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-on-dark transition-all hover:bg-[#3A6391]" disabled="@_salvandoCidade">
+                        @(_salvandoCidade ? "Salvando..." : "Cadastrar cidade")
+                    </button>
+                </EditForm>
+            </section>
+
+            <section class="rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-primary">Novo usuário</h2>
+                <p class="mt-1 text-sm font-semibold text-muted">Defina perfil administrador ou usuário vinculado a uma cidade.</p>
+
+                @if (!string.IsNullOrWhiteSpace(_usuarioFeedback))
+                {
+                    <div class="@GetAlertClass(_usuarioFeedbackError)">
+                        @_usuarioFeedback
+                    </div>
+                }
+
+                <EditForm Model="_usuarioModel" OnValidSubmit="SalvarUsuarioAsync" class="mt-5 space-y-4">
+                    <DataAnnotationsValidator />
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Usuário</label>
+                            <InputText class="form-control" @bind-Value="_usuarioModel.NomeUsuario" />
+                            <ValidationMessage For="@(() => _usuarioModel.NomeUsuario)" />
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Senha</label>
+                            <InputText class="form-control" type="password" @bind-Value="_usuarioModel.Senha" />
+                            <ValidationMessage For="@(() => _usuarioModel.Senha)" />
+                        </div>
+                    </div>
+
+                    <label class="flex items-center gap-2 text-sm font-semibold text-main">
+                        <InputCheckbox @bind-Value="_usuarioModel.IsAdmin" />
+                        Administrador
+                    </label>
+
+                    @if (!_usuarioModel.IsAdmin)
+                    {
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Cidade</label>
+                            <InputSelect class="form-control" @bind-Value="_usuarioModel.CidadeId">
+                                <option value="">Selecione uma cidade</option>
+                                @foreach (var cidade in _cidades)
+                                {
+                                    <option value="@cidade.Id">@cidade.Nome</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => _usuarioModel.CidadeId)" />
+                        </div>
+                    }
+
+                    <button type="submit" class="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-on-dark transition-all hover:bg-[#3A6391]" disabled="@_salvandoUsuario">
+                        @(_salvandoUsuario ? "Salvando..." : "Cadastrar usuário")
+                    </button>
+                </EditForm>
+            </section>
+        </div>
+
+        <section class="rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-bold text-primary">Cidades cadastradas</h2>
+            @if (_cidades.Count == 0)
+            {
+                <p class="mt-4 text-sm font-semibold text-muted">Nenhuma cidade cadastrada.</p>
+            }
+            else
+            {
+                <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    @foreach (var cidade in _cidades)
+                    {
+                        <article class="overflow-hidden rounded-xl border-soft bg-surface">
+                            @if (!string.IsNullOrWhiteSpace(cidade.FotoUrl))
+                            {
+                                <img src="@cidade.FotoUrl" alt="@($"Foto de {cidade.Nome}")" class="h-32 w-full object-cover" />
+                            }
+                            else
+                            {
+                                <div class="grid h-32 place-items-center text-sm font-semibold text-muted">Sem foto</div>
+                            }
+                            <div class="p-4">
+                                <strong class="text-main">@cidade.Nome</strong>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="overflow-hidden rounded-[var(--radius-xl)] border-soft bg-white shadow-sm">
+            <div class="border-b border-[var(--color-border)] px-6 py-4">
+                <h2 class="text-lg font-bold text-primary">Usuários cadastrados</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[680px] border-collapse">
+                    <thead class="bg-surface">
+                    <tr class="border-b border-[var(--color-border)]">
+                        <th class="px-6 py-3 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Usuário</th>
+                        <th class="px-6 py-3 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Perfil</th>
+                        <th class="px-6 py-3 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Cidade vinculada</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @if (_usuarios.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="3" class="px-6 py-10 text-center text-sm font-semibold text-muted">Nenhum usuário cadastrado.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var usuario in _usuarios)
+                        {
+                            <tr class="border-b border-[var(--color-border)] last:border-b-0">
+                                <td class="px-6 py-3.5 text-sm font-bold text-main">@usuario.NomeUsuario</td>
+                                <td class="px-6 py-3.5 text-sm font-semibold text-muted">@(usuario.IsAdmin ? "Administrador" : "Usuário")</td>
+                                <td class="px-6 py-3.5 text-sm font-semibold text-muted">@(usuario.CidadeNome ?? "-")</td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+</div>

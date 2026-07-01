@@ -1,0 +1,9 @@
+@inject NavigationManager Navigation
+
+@if (_authChecked && _isAuthenticated)
+{
+    <div class="mx-auto mt-10 max-w-lg rounded-[var(--radius-xl)] border-soft bg-white p-6 text-center shadow-sm">
+        <h1 class="text-xl font-bold text-primary">Acesso negado</h1>
+        <p class="mt-2 text-sm font-semibold text-muted">Você não tem permissão para acessar esta página.</p>
+    </div>
+}

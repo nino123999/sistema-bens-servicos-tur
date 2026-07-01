@@ -1,0 +1,209 @@
+@page "/roteiros"
+@attribute [Authorize]
+@using SistemaBensServicosTur.Web.Entities
+@using SistemaBensServicosTur.Web.Features.Roteiros
+@using SistemaBensServicosTur.Web.Components.Shared
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject RoteiroService RoteiroService
+@inject CidadeFilterState CidadeFilterState
+@inject IJSRuntime Js
+@inject NavigationManager Navigation
+
+<PageTitle>Roteiros</PageTitle>
+
+<div class="flex h-[calc(100dvh-var(--layout-header-height,8rem))] gap-4">
+    @* Left: Map *@
+    <div class="flex-1 rounded-[var(--radius-xl)] border-soft bg-white p-4 shadow-sm">
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+                @_errorMessage
+            </div>
+        }
+
+        @if (_loading)
+        {
+            <div class="grid h-full min-h-[460px] place-items-center rounded-[var(--radius-xl)] bg-surface">
+                <p class="text-sm font-semibold text-muted">Carregando roteiros...</p>
+            </div>
+        }
+        else if (_roteiros.Count == 0)
+        {
+            <div class="grid h-full min-h-[460px] place-items-center rounded-[var(--radius-xl)] bg-surface px-6 text-center">
+                <p class="text-sm font-semibold text-muted">Nenhum roteiro cadastrado.</p>
+            </div>
+        }
+        else
+        {
+            <div id="@MapElementId" class="h-full min-h-[460px] overflow-hidden rounded-[var(--radius-xl)] border-soft bg-surface"></div>
+        }
+    </div>
+
+    @* Right: List panel *@
+    <aside class="flex w-[380px] flex-col rounded-[var(--radius-xl)] border-soft bg-white p-4 shadow-sm">
+        <header class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-primary">Roteiros</h2>
+            <button type="button"
+                    class="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-on-dark transition-all hover:bg-[#3A6391]"
+                    @onclick="AbrirNovoRoteiro">
+                + Adicionar
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-auto">
+            @if (_roteiros.Count == 0)
+            {
+                <p class="text-center text-sm text-muted">Nenhum roteiro encontrado.</p>
+            }
+            else
+            {
+                <ul class="space-y-2">
+                    @foreach (var roteiro in _roteiros)
+                    {
+                        var isSelected = _roteiroSelecionadoId == roteiro.Id;
+                        <li class="rounded-xl border @(isSelected ? "border-primary bg-surface" : "border-soft bg-white") transition-all hover:border-primary">
+                            <div class="p-3">
+                                <button type="button"
+                                        class="w-full text-left"
+                                        @onclick="() => SelecionarRoteiro(roteiro.Id)">
+                                    <h3 class="font-semibold text-primary">@roteiro.Titulo</h3>
+                                    @if (!string.IsNullOrWhiteSpace(roteiro.Descricao))
+                                    {
+                                        <p class="mt-1 line-clamp-2 text-sm text-muted">@roteiro.Descricao</p>
+                                    }
+                                    <p class="mt-2 text-xs text-muted">
+                                        @roteiro.RoteiroEmpresas.Count empresa@(roteiro.RoteiroEmpresas.Count == 1 ? "" : "s")
+                                    </p>
+                                </button>
+
+                                <div class="mt-3 flex gap-2">
+                                    <button type="button"
+                                            class="rounded-lg border-soft bg-white px-3 py-1.5 text-xs font-semibold text-secondary transition-all hover:bg-surface hover:text-primary"
+                                            @onclick="() => EditarRoteiro(roteiro.Id)">
+                                        Editar
+                                    </button>
+                                    <button type="button"
+                                            class="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition-all hover:bg-red-100"
+                                            @onclick="() => ExcluirRoteiro(roteiro)">
+                                        Excluir
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </aside>
+</div>
+
+@* Side panel for add/edit *@
+@if (_isPanelOpen)
+{
+    <SidePanel Title="@(_isCreatingNew ? "Adicionar Roteiro" : "Editar Roteiro")"
+               Subtitle="@(_isCreatingNew ? "Criar novo roteiro" : (_model?.Titulo ?? string.Empty))"
+               IsSaving="@_isSaving"
+               FormId="roteiro-editor-form"
+               OnClose="FecharPainel">
+        <EditForm id="roteiro-editor-form" FormName="roteiro-editor-form" Model="_model" OnValidSubmit="SalvarAsync">
+            <DataAnnotationsValidator />
+
+            <section class="space-y-5">
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Titulo</label>
+                    <InputText class="form-control" maxlength="200" @bind-Value="_model.Titulo" placeholder="Titulo do roteiro" />
+                    <ValidationMessage For="@(() => _model.Titulo)" />
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Descricao</label>
+                    <InputTextArea class="form-control min-h-32" @bind-Value="_model.Descricao" placeholder="Descreva o roteiro" />
+                    <ValidationMessage For="@(() => _model.Descricao)" />
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="flex items-center gap-2">
+                        <InputCheckbox @bind-Value="_model.Inicio" class="form-checkbox" />
+                        <span class="text-sm font-semibold text-main">Inicio do roteiro</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <InputCheckbox @bind-Value="_model.Fim" class="form-checkbox" />
+                        <span class="text-sm font-semibold text-main">Fim do roteiro</span>
+                    </label>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Empresas</label>
+                    <p class="text-xs text-muted">Selecione na ordem do roteiro. Use as setas para reordenar.</p>
+
+                    <select class="form-control" size="6" multiple @onchange="OnEmpresaSelecionada">
+                        @foreach (var empresa in _empresasDisponiveis)
+                        {
+                            var isAlreadySelected = _model.EmpresaIds.Contains(empresa.Id);
+                            <option value="@empresa.Id" disabled="@isAlreadySelected">
+                                @empresa.NomeEmpresa @(isAlreadySelected ? "(selecionada)" : "")
+                            </option>
+                        }
+                    </select>
+
+                    @if (_model.EmpresaIds.Count > 0)
+                    {
+                        <div class="space-y-2">
+                            <p class="text-xs font-semibold text-main">Selecionadas (@_model.EmpresaIds.Count):</p>
+                            <ul class="space-y-1">
+                                @for (int i = 0; i < _model.EmpresaIds.Count; i++)
+                                {
+                                    var index = i;
+                                    var empresaId = _model.EmpresaIds[i];
+                                    var empresa = _empresasDisponiveis.FirstOrDefault(e => e.Id == empresaId);
+                                    if (empresa is not null)
+                                    {
+                                        <li class="flex items-center gap-2 rounded-lg border-soft bg-surface px-3 py-2">
+                                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-on-dark">@(i + 1)</span>
+                                            <span class="flex-1 text-sm font-semibold text-main">@empresa.NomeEmpresa</span>
+                                            <div class="flex gap-1">
+                                                @if (index > 0)
+                                                {
+                                                    <button type="button" class="rounded bg-white px-2 py-1 text-xs font-semibold text-secondary hover:bg-surface" @onclick="() => MoverEmpresa(index, -1)">↑</button>
+                                                }
+                                                @if (index < _model.EmpresaIds.Count - 1)
+                                                {
+                                                    <button type="button" class="rounded bg-white px-2 py-1 text-xs font-semibold text-secondary hover:bg-surface" @onclick="() => MoverEmpresa(index, 1)">↓</button>
+                                                }
+                                                <button type="button" class="rounded bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-100" @onclick="() => RemoverEmpresa(empresaId)">✕</button>
+                                            </div>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    <ValidationMessage For="@(() => _model.EmpresaIds)" />
+                </div>
+            </section>
+        </EditForm>
+    </SidePanel>
+}
+
+@if (_roteiroExclusaoPendente is not null)
+{
+    <button type="button" class="fixed inset-0 z-[80] cursor-default border-0 bg-slate-950/45" aria-label="Cancelar exclusao" @onclick="CancelarExclusao"></button>
+    <section class="fixed left-1/2 top-1/2 z-[90] w-[min(92vw,440px)] -translate-x-1/2 -translate-y-1/2 rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-md" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+        <div class="flex items-start gap-4">
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-700">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M8 7h8M10 7V5h4v2M6 7h12l-1 12H7L6 7z" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </span>
+            <div class="min-w-0">
+                <h2 id="delete-confirm-title" class="text-lg font-bold text-main">Excluir roteiro?</h2>
+                <p class="mt-1 text-sm font-semibold text-muted">Esta acao removera <strong class="text-main">@_roteiroExclusaoPendente.Titulo</strong> definitivamente.</p>
+            </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+            <button type="button" class="rounded-xl border-soft bg-white px-4 py-2 text-sm font-semibold text-secondary transition-all hover:bg-surface hover:text-primary" disabled="@_isDeleting" @onclick="CancelarExclusao">Cancelar</button>
+            <button type="button" class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60" disabled="@_isDeleting" @onclick="ConfirmarExclusaoAsync">@(_isDeleting ? "Excluindo..." : "Excluir")</button>
+        </div>
+    </section>
+}

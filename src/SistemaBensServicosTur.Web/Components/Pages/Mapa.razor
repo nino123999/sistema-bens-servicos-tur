@@ -1,0 +1,38 @@
+@page "/mapa"
+@attribute [Authorize]
+@using SistemaBensServicosTur.Web.Features.Mapa
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject MapaService MapaService
+@inject IJSRuntime Js
+
+<PageTitle>Mapa</PageTitle>
+
+<div class="w-full" style="height: calc(100dvh - var(--layout-header-height, 8rem))">
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+            @_errorMessage
+        </div>
+    }
+
+    <section class="flex flex-col h-full overflow-hidden rounded-[var(--radius-xl)] border-soft bg-white p-4 shadow-sm">
+        @if (_loading)
+        {
+            <div class="grid min-h-[420px] place-items-center rounded-[var(--radius-xl)] bg-surface">
+                <p class="text-sm font-semibold text-muted">Carregando pontos...</p>
+            </div>
+        }
+        else if (_mapPoints.Count == 0)
+        {
+            <div class="grid min-h-[420px] place-items-center rounded-[var(--radius-xl)] bg-surface px-6 text-center">
+                <p class="text-sm font-semibold text-muted">Nenhum bem/serviço com coordenadas cadastrado.</p>
+            </div>
+        }
+        else
+        {
+            <div class="flex-1 gap-4">
+                <div id="@MapElementId" class="h-full min-h-[460px] overflow-hidden rounded-[var(--radius-xl)] border-soft bg-surface"></div>
+            </div>
+        }
+    </section>
+</div>

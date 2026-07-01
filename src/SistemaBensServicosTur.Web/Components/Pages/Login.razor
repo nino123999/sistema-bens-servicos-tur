@@ -1,0 +1,75 @@
+@page "/login"
+@layout AuthLayout
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Login</PageTitle>
+
+<div class="min-h-screen bg-main px-4 py-10">
+    <section class="mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-[980px] items-center">
+        <div class="grid overflow-hidden rounded-[var(--radius-xl)] border-soft bg-white shadow-md lg:grid-cols-[1.05fr_0.95fr]">
+            
+            <div class="bg-primary p-8 text-on-dark sm:p-10 flex flex-col justify-center items-center h-full">
+                <div class="flex flex-col items-center gap-2">
+                    <div class="flex gap-4 items-center justify-center">
+                        <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15">
+                            <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.6">
+                                <path d="M12 13.5a3 3 0 100-6 3 3 0 000 6z"/>
+                                <path d="M19.5 10.5c0 6.188-7.5 12-7.5 12s-7.5-5.813-7.5-12a7.5 7.5 0 1115 0z"/>
+                            </svg>
+                        </span>
+                        <div>
+                            <span class="hidden flex-col sm:flex">
+                                <img width="180px" src="https://static.wixstatic.com/media/7f3263_6313861f2ff44e7b9cb6aa636f006bb7~mv2.png/v1/fill/w_326,h_40,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Ativo%204-8.png" alt="Logo"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center text-white text-3xl font-bold tracking-widest text-center">
+                        <p>PORTAL TURÍSTICO</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-8 sm:p-10">
+                <header>
+                    <h2 class="text-2xl font-bold text-primary">Acesso ao sistema</h2>
+                    <p class="mt-2 text-sm font-semibold text-muted">Informe seu usuário e senha.</p>
+                </header>
+
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+                        @ErrorMessage
+                    </div>
+                }
+
+                <form method="post" action="/auth/login" class="mt-6 space-y-4">
+                    <input type="hidden" name="returnUrl" value="@ReturnUrlValue" />
+
+                    <div class="space-y-2">
+                        <label for="login-username" class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Usuário</label>
+                        <input id="login-username"
+                               name="username"
+                               type="text"
+                               autocomplete="username"
+                               required
+                               class="w-full rounded-[var(--radius-xl)] border-soft bg-surface px-5 py-3 text-base text-main outline-none transition-all placeholder:text-secondary focus:border-primary focus:bg-white" />
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="login-password" class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Senha</label>
+                        <input id="login-password"
+                               name="password"
+                               type="password"
+                               autocomplete="current-password"
+                               required
+                               class="w-full rounded-[var(--radius-xl)] border-soft bg-surface px-5 py-3 text-base text-main outline-none transition-all placeholder:text-secondary focus:border-primary focus:bg-white" />
+                    </div>
+
+                    <button type="submit" class="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold uppercase tracking-[0.08em] text-on-dark transition-all hover:bg-[#3A6391]">
+                        Entrar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+</div>

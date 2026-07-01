@@ -1,0 +1,79 @@
+@page "/relatorios"
+@attribute [Authorize]
+@using SistemaBensServicosTur.Web.Features.Relatorios
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject RelatorioService RelatorioService
+
+<PageTitle>Relatórios</PageTitle>
+
+<div class="space-y-6">
+    <header class="rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-sm">
+        <h1 class="text-2xl font-bold text-primary">Relatórios</h1>
+        <p class="mt-1 text-sm font-semibold text-muted">Resumo dos bens e serviços cadastrados.</p>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+            @_errorMessage
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <section class="rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-sm">
+            <p class="text-sm font-semibold text-muted">Carregando relatório...</p>
+        </section>
+    }
+    else
+    {
+        <section class="grid gap-4 md:grid-cols-3">
+            <article class="rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-sm">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-muted">Total</p>
+                <strong class="mt-2 block text-3xl text-primary">@_total</strong>
+            </article>
+            <article class="rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-sm">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-muted">Com fotos</p>
+                <strong class="mt-2 block text-3xl text-primary">@_comFotos</strong>
+            </article>
+            <article class="rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-sm">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-muted">Com história</p>
+                <strong class="mt-2 block text-3xl text-primary">@_comHistoria</strong>
+            </article>
+        </section>
+
+        <section class="overflow-hidden rounded-[var(--radius-xl)] border-soft bg-white shadow-sm">
+            <div class="border-b border-[var(--color-border)] px-6 py-4">
+                <h2 class="text-lg font-bold text-main">Por categoria</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[560px] border-collapse">
+                    <thead class="bg-surface">
+                    <tr class="border-b border-[var(--color-border)]">
+                        <th class="px-6 py-3 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Categoria</th>
+                        <th class="px-6 py-3 text-right text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Quantidade</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @if (_porCategoria.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="2" class="px-6 py-10 text-center text-sm font-semibold text-muted">Nenhum cadastro encontrado.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in _porCategoria)
+                        {
+                            <tr class="border-b border-[var(--color-border)] last:border-b-0">
+                                <td class="px-6 py-3.5 text-sm font-bold text-main">@item.Categoria</td>
+                                <td class="px-6 py-3.5 text-right text-sm font-semibold text-muted">@item.Total</td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+</div>

@@ -1,0 +1,307 @@
+@page "/"
+@page "/cadastros"
+@attribute [Authorize]
+@using SistemaBensServicosTur.Web.Infrastructure.Data
+@using SistemaBensServicosTur.Web.Features.Empresas
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<CadastroInvturDbContext> DbContextFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject DashboardActions DashboardActions
+@inject CidadeFilterState CidadeFilterState
+@inject EmpresaDashboardService EmpresaDashboardService
+@inject EmpresaService EmpresaService
+@inject IWebHostEnvironment Environment
+@inject IJSRuntime Js
+@inject NavigationManager Navigation
+
+<PageTitle>Cadastros</PageTitle>
+
+<div class="space-y-6">
+    @if (_contextoCarregado && _cidadeAtual is not null)
+    {
+        <EntityCard Name="@_cidadeAtual.Nome"
+                    Location="Cidade selecionada"
+                    FotoUrl="@_cidadeAtual.FotoUrl"
+                    FotoSecretariaUrl="@_cidadeAtual.FotoSecretariaUrl" />
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+            @_errorMessage
+        </div>
+    }
+
+    <EstablishmentFilter SearchText="@_searchText"
+                         SearchTextChanged="OnSearchTextChanged"
+                         CategoriaId="@_categoriaId"
+                         CategoriaIdChanged="OnCategoriaChanged"
+                         TipoId="@_tipoId"
+                         TipoIdChanged="OnTipoChanged"
+                         SubtipoId="@_subtipoId"
+                         SubtipoIdChanged="OnSubtipoChanged"
+                         OnClear="ClearFiltersAsync"
+                         OnFilterRequested="CarregarEmpresasAsync"
+                         OnCategoryChanged="CarregarEmpresasAsync" />
+
+    <EstablishmentResultsTable Establishments="_empresas"
+                               TotalRecords="_totalEmpresas"
+                               PageNumber="_currentPage"
+                               PageSize="_pageSize"
+                               Loading="_loading"
+                               OnAdd="AbrirNovoPainelAsync"
+                               OnEdit="SelecionarEmpresaAsync"
+                               OnDelete="ExcluirAsync"
+                               OnQrCode="BaixarQrCodeHistoriaAsync"
+                               PageNumberChanged="OnPageChangedAsync" />
+</div>
+
+@if (_isPanelOpen)
+{
+    <SidePanel Title="@(_isCreatingNew ? "Adicionar bem/serviço" : "Editar bem/serviço")"
+               Subtitle="@(_isCreatingNew ? "Cadastro de novos bens e serviços turísticos" : ObterTextoOuTraco(_model.NomeEmpresa, "Bem/serviço"))"
+               Tabs="@SidebarTabs"
+               ActiveTabKey="@_tabAtiva"
+               OnTabChanged="DefinirTabAtiva"
+               IsSaving="@_isSaving"
+               FormId="empresa-editor-form"
+               OnClose="FecharPainel">
+        <EditForm id="empresa-editor-form" FormName="empresa-editor-form" Model="_model" OnValidSubmit="SalvarAsync">
+            <DataAnnotationsValidator />
+
+            @if (_tabAtiva == "geral")
+            {
+                <section class="space-y-5">
+                    <h3 class="text-lg font-bold text-primary">Geral</h3>
+
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Nome fantasia</label>
+                            <InputText class="form-control" maxlength="200" @bind-Value="_model.NomeEmpresa" placeholder="Informe o nome" />
+                            <ValidationMessage For="@(() => _model.NomeEmpresa)" />
+                        </div>
+                    
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Razão social</label>
+                            <InputText class="form-control" maxlength="200" @bind-Value="_model.RazaoSocial" placeholder="Informe o nome" />
+                        </div>
+
+                        <CategorySelector @bind-CategoriaId="_model.CategoriaId"
+                                      @bind-TipoId="_model.TipoId"
+                                      @bind-SubtipoId="_model.SubtipoId"
+                                      Placeholder="Selecione categoria / tipo / subtipo" />
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">CNPJ</label>
+                            <InputText class="form-control" maxlength="18" inputmode="numeric" data-mask="cnpj" @bind-Value="_model.Cnpj" placeholder="00.000.000/0000-00" />
+                            <ValidationMessage For="@(() => _model.Cnpj)" />
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Fotos</label>
+                        <InputFile OnChange="OnPhotosSelectedAsync" multiple accept="image/*" class="form-control" />
+
+                        @if (_isUploadingPhotos)
+                        {
+                            <p class="text-sm font-semibold text-muted">Enviando fotos...</p>
+                        }
+
+                        @if (_model.FotoUrls.Count > 0)
+                        {
+                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                @foreach (var fotoUrl in _model.FotoUrls)
+                                {
+                                    <div class="relative overflow-hidden rounded-xl border-soft bg-surface">
+                                        <img src="@fotoUrl" alt="Foto do bem/serviço" class="h-32 w-full object-cover" />
+                                        <button type="button" class="absolute right-2 top-2 rounded-full bg-white/95 px-2 py-1 text-xs font-bold text-red-700 shadow-sm" @onclick="@(() => RemoverFoto(fotoUrl))">
+                                            Remover
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            @if (_tabAtiva == "endereco")
+            {
+                <section class="space-y-5">
+                    <h3 class="text-lg font-bold text-primary">Endereço</h3>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Endereço</label>
+                        <InputText class="form-control" maxlength="300" @bind-Value="_model.Endereco" />
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">CEP</label>
+                            <InputText class="form-control" maxlength="9" inputmode="numeric" data-mask="cep" @bind-Value="_model.Cep" placeholder="00000-000" />
+                            <ValidationMessage For="@(() => _model.Cep)" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Bairro</label>
+                            <InputText class="form-control" maxlength="100" @bind-Value="_model.Bairro" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Cidade</label>
+                            <InputText class="form-control" maxlength="100" @bind-Value="_model.Cidade" />
+                        </div>
+                    </div>
+                </section>
+            }
+
+            @if (_tabAtiva == "contato")
+            {
+                <section class="space-y-5">
+                    <h3 class="text-lg font-bold text-primary">Contato</h3>
+
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Telefone</label>
+                            <InputText class="form-control" maxlength="15" inputmode="tel" data-mask="phone" @bind-Value="_model.TelefoneEmpresa" placeholder="(00) 0000-0000" />
+                            <ValidationMessage For="@(() => _model.TelefoneEmpresa)" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Celular</label>
+                            <InputText class="form-control" maxlength="15" inputmode="tel" data-mask="phone" @bind-Value="_model.CelularEmpresa" placeholder="(00) 0000-0000" />
+                            <ValidationMessage For="@(() => _model.CelularEmpresa)" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">WhatsApp</label>
+                            <InputText class="form-control" maxlength="15" inputmode="tel" data-mask="phone" @bind-Value="_model.WhatsAppEmpresa" placeholder="(00) 0000-0000" />
+                            <ValidationMessage For="@(() => _model.WhatsAppEmpresa)" />
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">E-mail da empresa</label>
+                            <InputText class="form-control" maxlength="200" @bind-Value="_model.EmailEmpresa" />
+                            <ValidationMessage For="@(() => _model.EmailEmpresa)" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Site</label>
+                            <InputText class="form-control" maxlength="200" @bind-Value="_model.SiteEmpresa" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Instagram</label>
+                            <InputText class="form-control" maxlength="200" @bind-Value="_model.InstagramEmpresa" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Facebook</label>
+                            <InputText class="form-control" maxlength="200" @bind-Value="_model.FacebookEmpresa" />
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Responsável</label>
+                            <InputText class="form-control" maxlength="200" @bind-Value="_model.Proprietario1" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Celular do responsável</label>
+                            <InputText class="form-control" maxlength="15" inputmode="tel" data-mask="phone" @bind-Value="_model.CelularProprietario1" placeholder="(00) 0000-0000" />
+                            <ValidationMessage For="@(() => _model.CelularProprietario1)" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">WhatsApp do responsável</label>
+                            <InputText class="form-control" maxlength="15" inputmode="tel" data-mask="phone" @bind-Value="_model.WhatsAppProprietario1" placeholder="(00) 0000-0000" />
+                            <ValidationMessage For="@(() => _model.WhatsAppProprietario1)" />
+                        </div>
+                    </div>
+                </section>
+            }
+
+            @if (_tabAtiva == "mais")
+            {
+                <section class="space-y-5">
+                    <h3 class="text-lg font-bold text-primary">Mais informações</h3>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Informações dos bens/serviços</label>
+                        <InputTextArea class="form-control min-h-36" @bind-Value="_model.InformacoesServicos" />
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Latitude</label>
+                            <InputNumber class="form-control" @bind-Value="_model.Latitude" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Longitude</label>
+                            <InputNumber class="form-control" @bind-Value="_model.Longitude" />
+                        </div>
+                    </div>
+                </section>
+            }
+
+            @if (_tabAtiva == "historia")
+            {
+                <section class="space-y-5">
+                    <h3 class="text-lg font-bold text-primary">História</h3>
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Texto sobre questões históricas e culturais</label>
+                        <InputTextArea class="form-control min-h-56" @bind-Value="_model.Historia" />
+                    </div>
+                </section>
+            }
+
+            @if (_tabAtiva == "cadastur")
+            {
+                <section class="space-y-5">
+                    <h3 class="text-lg font-bold text-primary">Cadastur</h3>
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-[0.16em] text-muted">Histórico sobre o cadastramento no CADASTUR</label>
+                        <InputTextArea class="form-control min-h-56" @bind-Value="_model.Cadastur" />
+                    </div>
+                </section>
+            }
+        </EditForm>
+    </SidePanel>
+}
+
+@if (_empresaExclusaoPendente is not null)
+{
+    <button type="button"
+            class="fixed inset-0 z-[80] cursor-default border-0 bg-slate-950/45"
+            aria-label="Cancelar exclusão"
+            @onclick="CancelarExclusao">
+    </button>
+
+    <section class="fixed left-1/2 top-1/2 z-[90] w-[min(92vw,440px)] -translate-x-1/2 -translate-y-1/2 rounded-[var(--radius-xl)] border-soft bg-white p-6 shadow-md"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="delete-confirm-title">
+        <div class="flex items-start gap-4">
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-700">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M8 7h8M10 7V5h4v2M6 7h12l-1 12H7L6 7z" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </span>
+            <div class="min-w-0">
+                <h2 id="delete-confirm-title" class="text-lg font-bold text-main">Excluir bem/serviço?</h2>
+                <p class="mt-1 text-sm font-semibold text-muted">
+                    Esta ação removerá <strong class="text-main">@_empresaExclusaoPendente.NomeEmpresa</strong> definitivamente.
+                </p>
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-2">
+            <button type="button"
+                    class="rounded-xl border-soft bg-white px-4 py-2 text-sm font-semibold text-secondary transition-all hover:bg-surface hover:text-primary"
+                    disabled="@_isDeleting"
+                    @onclick="CancelarExclusao">
+                Cancelar
+            </button>
+            <button type="button"
+                    class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled="@_isDeleting"
+                    @onclick="ConfirmarExclusaoAsync">
+                @(_isDeleting ? "Excluindo..." : "Excluir")
+            </button>
+        </div>
+    </section>
+}
