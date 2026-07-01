@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius-xl: 0.75rem;
+  }
+}
+
+@layer components {
+  .form-control {
+    @apply w-full rounded-lg border border-soft bg-surface px-4 py-2 text-sm text-main outline-none transition-all placeholder:text-secondary focus:border-primary focus:bg-white;
+  }
+
+  .form-checkbox {
+    @apply h-4 w-4 rounded border-soft text-primary;
+  }
+}
